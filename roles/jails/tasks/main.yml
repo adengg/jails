@@ -1,0 +1,138 @@
+---
+
+- name: create rootfs for basic jails
+  zfs:
+          name: 'zroot/jails/rootfs/{{ item.name }}'
+          state: present
+          extra_zfs_properties:
+                  quota: '{{ item.quota }}'
+  loop: '{{ basic_jails }}'
+
+- name: extract base system into full jails
+  unarchive:
+          src: '/jails/archives/base-{{item.version}}.txz'
+          dest: '/jails/rootfs/{{item.name}}'
+          remote_src: yes
+          creates: '/jails/rootfs/{{item.name}}/bin/sh'
+  loop: '{{ basic_jails }}'
+
+- name: create resolv.conf
+  template:
+          src: resolv.conf
+          dest: /jails/rootfs/{{item.name}}/etc/resolv.conf
+          owner: root
+          group: wheel
+          mode: 0644
+  loop: '{{ basic_jails }}'
+
+- name: create rc.conf
+  file:
+          path: /jails/rootfs/{{item.name}}/etc/rc.conf
+          owner: root
+          group: wheel
+          state: touch
+          mode: 0644
+  loop: '{{ basic_jails }}'
+- name: disable syslogd network socket in jails
+  command: sysrc -R '/jails/rootfs/{{item.name}}' syslogd_flags='-ss'
+  loop: '{{ basic_jails }}'
+- name: disable sendmail
+  command: sysrc -R '/jails/rootfs/{{item.name}}' sendmail_enable=NONE
+  loop: '{{ basic_jails }}'
+- name: run freebsd-update
+  command: freebsd-update -b '/jails/rootfs/{{item.name}}/' fetch install
+  loop: '{{ basic_jails }}'
+
+- name: remove default pkg repo
+  file:
+          path: /jails/rootfs/{{item.name}}/etc/pkg/FreeBSD.conf
+          state: absent
+  loop: '{{ basic_jails }}'
+- name: add custom pkg repo
+  copy:
+          src: localpkg.conf
+          dest: /jails/rootfs/{{item.name}}/etc/pkg/localpkg.conf
+          owner: root
+          group: wheel
+          mode: 0644
+  loop: '{{ basic_jails }}'
+
+- name: copy cacert
+  copy:
+          src: /usr/local/share/certs/ca-root-nss.crt
+          dest: /jails/rootfs/{{item.name}}/etc/ssl/cert.pem
+          remote_src: yes
+          force: no
+  loop: '{{ basic_jails }}'
+
+- name: create certs directory
+  file:
+          path: /jails/rootfs/{{item.name}}/usr/local/etc/ssl/certs
+          state: directory
+          owner: root
+          group: wheel
+          mode: 0755
+  loop: '{{ basic_jails }}'
+
+- name: copy poudriere signing cert
+  copy:
+          src: /usr/local/etc/ssl/certs/poudriere.cert
+          dest: /jails/rootfs/{{item.name}}/usr/local/etc/ssl/certs/poudriere.cert
+          remote_src: yes
+  loop: '{{ basic_jails }}'
+
+- name: create data datasets for pg jails
+  zfs:
+          name: 'zroot/jails/data/{{ item.name }}'
+          state: present
+          extra_zfs_properties:
+                  quota: "{{ item.dataquota }}"
+                  recordsize: 8k
+                  primarycache: all
+                  jailed: yes
+  loop: '{{ pg11_jails }}'
+
+- name: clone postgresql jails
+  zfs:
+          name: 'zroot/jails/rootfs/{{ item.name }}'
+          origin: zroot/jails/templates/pg11@current
+          state: present
+          extra_zfs_properties:
+                  quota: '{{ item.quota }}'
+  loop: '{{ pg11_jails }}'
+
+- name: create jail.conf
+  template:
+          src: jail.conf
+          dest: /etc/jail.conf
+          owner: root
+          group: wheel
+          mode: 0644
+
+- name: start jails
+  command: 'service jail start {{item.name}}'
+  args:
+          warn: false
+  loop: '{{ basic_jails }}'
+
+- name: start jails
+  command: 'service jail start {{item.name}}'
+  args:
+          warn: false
+  loop: '{{ pg11_jails }}'
+
+- name: install ca certs in jails
+  pkgng:
+          name: ca_root_nss
+          state: latest
+          jail: '{{item.name}}'
+  loop: '{{ basic_jails }}'
+
+- name: add jails to inventory
+  add_host:
+          name: '{{item.name}}'
+          groups: [freebsd, pgjails]
+          ansible_ssh_host: '{{item.name}}@{{ansible_ssh_host}}'
+          ansible_connection: sshjail
+          datapath: 'zroot/jails/data/{{ item.name }}'
+  loop: '{{ pg11_jails }}'

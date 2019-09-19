@@ -1,0 +1,33 @@
+---
+nameservers:
+        - 172.31.0.1
+
+basic_jails:
+        - name: nctest
+          quota: 5G
+          version: '12.0-RELEASE'
+          parameters:
+                  'ip4.addr': 'bridge0|172.31.1.1'
+                  host.hostname: nc.dengg.name
+
+
+pg11_jails:
+        - name: pg11-1
+          quota: 5g
+          dataquota: 5g
+          parameters:
+                host.hostname: pg1.local
+                'ip4.addr': 'bridge0|172.31.1.2'
+        - name: pg11-2
+          quota: 5g
+          dataquota: 5g
+          parameters:
+                host.hostname: pg2.local
+                'ip4.addr': 'bridge0|172.31.1.3'
+        - name: pg11-3
+          quota: 5g
+          dataquota: 5g
+          parameters:
+                host.hostname: pg3.local
+                'ip4.addr': 'bridge0|172.31.1.4'
+

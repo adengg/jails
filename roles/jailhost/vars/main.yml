@@ -1,0 +1,16 @@
+---
+
+jailhost_pkgs:
+        - python3
+        - tmux
+        - zsh
+        - bash
+        - vim
+        - ca_root_nss
+        - gtar
+        - sudo
+        - htop
+
+releases:
+        - version: '12.0-RELEASE'
+          checksum: sha512:915e026c2b6be23d30f423efd9b7dae310b4e70a003142205204eb1eaa96ea186794ce469096dee202d6e9b5d64b65e25627d8df8bcf2fbc9036fb2e08bea6c3

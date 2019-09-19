@@ -1,0 +1,49 @@
+---
+
+- name: set zfs_arc_max
+  sysctl:
+          name: vfs.zfs.arc_max
+          value: '{{zfs_arc_max}}'
+
+- name: install jailhost packages
+  pkgng:
+          name: '{{ jailhost_pkgs }}'
+          pkgsite: localpkg
+          state: latest
+          autoremove: yes
+- name: allow sudo nopasswd for wheel
+  lineinfile:
+          line: "%wheel ALL=(ALL) NOPASSWD: ALL"
+          path: /usr/local/etc/sudoers
+- name: create jails dataset
+  zfs:
+          name: 'zroot/jails'
+          state: present
+          extra_zfs_properties:
+                  mountpoint: '/jails'
+- name: archives dataset
+  zfs:
+          name: 'zroot/jails/archives'
+          state: present
+          extra_zfs_properties:
+                  compression: off
+                  recordsize: 1M
+- name: rootfs dataset
+  zfs:
+          name: 'zroot/jails/rootfs'
+          state: present
+- name: data dataset
+  zfs:
+          name: 'zroot/jails/data'
+          state: present
+- name: enable jails
+  service:
+          name: jail
+          state: started
+          enabled: yes
+- name: download base tgz
+  get_url:
+          url: 'http://ftp.at.freebsd.org/pub/FreeBSD/releases/amd64/{{item.version}}/base.txz'
+          dest: '/jails/archives/base-{{item.version}}.txz'
+          checksum: '{{item.checksum}}'
+  loop: '{{releases}}'

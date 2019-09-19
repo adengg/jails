@@ -1,0 +1,9 @@
+---
+
+- hosts: jailhosts
+  roles:
+          - jails
+- hosts: pgjails
+  strategy: free
+  roles:
+          - pgjails

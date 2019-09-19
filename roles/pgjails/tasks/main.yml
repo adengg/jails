@@ -1,0 +1,30 @@
+---
+
+- name: create dataset for db data
+  zfs:
+          name: '{{ datapath }}/data11'
+          state: present
+          extra_zfs_properties:
+                  mountpoint: /var/db/postgres/data11
+- name: create dataset for db data
+  zfs:
+          name: '{{ datapath }}/data11/base'
+          state: present
+- name: create dataset for db data
+  zfs:
+          name: '{{ datapath }}/data11/pg_wal'
+          state: present
+
+- name: initdb
+  shell: 'su postgres -c "initdb /tmp/data11" && cp -a /tmp/data11 /var/db/postgres/ && rm -rf /tmp/data11'
+  args:
+        creates: /var/db/postgres/data11/postgresql.conf
+  notify:
+          - start postgresql
+
+#- name: disable tcp
+#  lineinfile:
+#          path: /var/db/postgres/data11/postgresql.conf
+#          line: listen_addresses = ''
+#  notify:
+#          - start postgresql

@@ -1,0 +1,6 @@
+---
+
+- hosts: jailhosts
+  strategy: free
+  roles:
+          - jailhost
